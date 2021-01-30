@@ -3,10 +3,11 @@ package com.example.todoapp.data
 import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.todoapp.util.TASK_TABLE
 import kotlinx.android.parcel.Parcelize
 import java.text.DateFormat
 
-@Entity(tableName = "task_table")
+@Entity(tableName = TASK_TABLE)
 @Parcelize
 data class Task(
     val name: String,
