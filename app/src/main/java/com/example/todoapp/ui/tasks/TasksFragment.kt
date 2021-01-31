@@ -9,12 +9,14 @@ import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.todoapp.R
 import com.example.todoapp.data.manager.SortOrder
 import com.example.todoapp.databinding.FragmentTasksBinding
+import com.example.todoapp.util.exhaustive
 import com.example.todoapp.util.onQueryTextChanging
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,24 +28,21 @@ import java.util.*
 @AndroidEntryPoint
 class TasksFragment : Fragment(R.layout.fragment_tasks) {
 
-    private lateinit var binding: FragmentTasksBinding
     private val viewModel: TasksViewModel by viewModels()
     private val taskAdapter = TaskAdapter()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setHasOptionsMenu(true)
-        if(!this::binding.isInitialized) {
-            binding = FragmentTasksBinding.bind(view)
-        }
-        initRecyclerView()
-        initClickListeners()
-        registerEventMessages()
+        val binding = FragmentTasksBinding.bind(view)
+        initRecyclerView(binding)
+        initClickListeners(binding)
+        registerEvents()
         observeData()
     }
 
 
-    private fun registerEventMessages() {
+    private fun registerEvents() {
         viewLifecycleOwner.lifecycleScope.launchWhenStarted {
             viewModel.tasksEvent.collect { event ->
                 when(event) {
@@ -53,13 +52,25 @@ class TasksFragment : Fragment(R.layout.fragment_tasks) {
                                 viewModel.onUndoDeleteClick(event.task)
                             }.show()
                     }
-                }
+
+                    is TasksViewModel.TaskEvent.NavigateToEditTaskScreen -> {
+                        val action = TasksFragmentDirections.actionTasksFragmentToAddEditTaskFragment(event.task, "Edit Task")
+                        findNavController().navigate(action)
+
+                    }
+
+                    is TasksViewModel.TaskEvent.NavigateToAddTaskScreen -> {
+                        val action = TasksFragmentDirections.actionTasksFragmentToAddEditTaskFragment(null, "New Task")
+                        findNavController().navigate(action)
+                    }
+
+                }.exhaustive
 
             }
         }
     }
 
-    private fun initClickListeners() {
+    private fun initClickListeners(binding: FragmentTasksBinding) {
         taskAdapter.setOnCheckBoxClickListener { task, isChecked ->
             viewModel.onTaskCheckedChanged(task, isChecked)
         }
@@ -67,9 +78,13 @@ class TasksFragment : Fragment(R.layout.fragment_tasks) {
         taskAdapter.setOnItemClickListener { task ->
             viewModel.onTaskSelected(task)
         }
+
+        binding.fabAddTask.setOnClickListener {
+            viewModel.onAddNewTaskClick()
+        }
     }
 
-    private fun initRecyclerView() {
+    private fun initRecyclerView(binding: FragmentTasksBinding) {
         binding.apply {
             recyclerViewTasks.apply {
                 adapter = taskAdapter
