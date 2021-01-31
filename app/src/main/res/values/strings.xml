@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">ToDo App</string>
+    <string name="task_deleted">Task Deleted</string>
+    <string name="undo">Undo</string>
 </resources>

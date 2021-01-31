@@ -9,28 +9,54 @@ import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.todoapp.R
 import com.example.todoapp.data.manager.SortOrder
 import com.example.todoapp.databinding.FragmentTasksBinding
 import com.example.todoapp.util.onQueryTextChanging
+import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.*
 
 @AndroidEntryPoint
-class TasksFragment: Fragment(R.layout.fragment_tasks) {
+class TasksFragment : Fragment(R.layout.fragment_tasks) {
 
+    private lateinit var binding: FragmentTasksBinding
     private val viewModel: TasksViewModel by viewModels()
     private val taskAdapter = TaskAdapter()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setHasOptionsMenu(true)
-        val binding = FragmentTasksBinding.bind(view)
-        initRecyclerView(binding)
+        if(!this::binding.isInitialized) {
+            binding = FragmentTasksBinding.bind(view)
+        }
+        initRecyclerView()
         initClickListeners()
+        registerEventMessages()
         observeData()
+    }
+
+
+    private fun registerEventMessages() {
+        viewLifecycleOwner.lifecycleScope.launchWhenStarted {
+            viewModel.tasksEvent.collect { event ->
+                when(event) {
+                    is TasksViewModel.TaskEvent.ShowUndoDeleteTaskMessage -> {
+                        Snackbar.make(requireView(), getString(R.string.task_deleted), Snackbar.LENGTH_LONG)
+                            .setAction(getString(R.string.undo)) {
+                                viewModel.onUndoDeleteClick(event.task)
+                            }.show()
+                    }
+                }
+
+            }
+        }
     }
 
     private fun initClickListeners() {
@@ -43,13 +69,37 @@ class TasksFragment: Fragment(R.layout.fragment_tasks) {
         }
     }
 
-    private fun initRecyclerView(binding: FragmentTasksBinding) {
+    private fun initRecyclerView() {
         binding.apply {
             recyclerViewTasks.apply {
                 adapter = taskAdapter
                 layoutManager = LinearLayoutManager(requireContext())
                 setHasFixedSize(true)
             }
+
+            ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP or ItemTouchHelper.DOWN or
+                        ItemTouchHelper.START or ItemTouchHelper.END,
+                ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+            ) {
+                override fun onMove(
+                    recyclerView: RecyclerView,
+                    viewHolder: RecyclerView.ViewHolder,
+                    target: RecyclerView.ViewHolder
+                ): Boolean {
+                    val fromPosition = viewHolder.adapterPosition
+                    val toPosition = target.adapterPosition
+                    val taskList = taskAdapter.currentList.toMutableList()
+                    Collections.swap(taskList, fromPosition, toPosition)
+                    taskAdapter.submitList(taskList.toList())
+                    return true
+                }
+
+                override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                    val task = taskAdapter.currentList[viewHolder.adapterPosition]
+                    viewModel.onTaskSwiped(task)
+                }
+            }).attachToRecyclerView(recyclerViewTasks)
         }
     }
 
@@ -79,7 +129,7 @@ class TasksFragment: Fragment(R.layout.fragment_tasks) {
 
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when(item.itemId) {
+        return when (item.itemId) {
             R.id.action_sort_by_name -> {
                 viewModel.onSortOrderSelected(SortOrder.BY_NAME)
                 true

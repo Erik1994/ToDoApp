@@ -28,5 +28,12 @@ class DataRepository @Inject constructor(
 
     }
 
-    suspend fun onTaskCheckedChanged(task: Task, isChecked: Boolean) = taskDao.update(task.copy(completed = isChecked))
+    suspend fun onTaskCheckedChanged(task: Task, isChecked: Boolean) =
+        taskDao.update(task.copy(completed = isChecked))
+
+    suspend fun onTaskSwiped(task: Task) =
+        taskDao.delete(task)
+
+    suspend fun onUndoDeleteClick(task: Task) =
+        taskDao.insert(task)
 }
