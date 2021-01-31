@@ -4,22 +4,23 @@ import androidx.hilt.lifecycle.ViewModelInject
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import com.example.todoapp.data.Task
 import com.example.todoapp.data.TaskDao
 import com.example.todoapp.data.manager.PreferencesManager
 import com.example.todoapp.data.manager.SortOrder
+import com.example.todoapp.data.repo.DataRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 
 class TasksViewModel @ViewModelInject constructor(
-    private val taskDao: TaskDao,
-    private val prefrencesManager: PreferencesManager
+    private val dataRepository: DataRepository
 ): ViewModel() {
 
     val searchQuery = MutableStateFlow("")
 
-    val preferencesFlow = prefrencesManager.preferences
+    val preferencesFlow = dataRepository.preferencesFlow()
 
 //    val sortOrder = MutableStateFlow(SortOrder.BY_DATE)
 //
@@ -36,17 +37,25 @@ class TasksViewModel @ViewModelInject constructor(
         Pair(query, filterPreferences)
 
     }.flatMapLatest { (query, filterPreferences) ->
-         taskDao.getTasks(query, filterPreferences.sortOrder, filterPreferences.hideCompleted)
+        dataRepository.getTasks(query, filterPreferences.sortOrder, filterPreferences.hideCompleted)
     }
 
     val tasks = tasksFlow.asLiveData()
 
     fun onSortOrderSelected(sortOrder: SortOrder) = viewModelScope.launch {
-        prefrencesManager.updateSortOrder(sortOrder)
+        dataRepository.onSortOrderSelected(sortOrder)
     }
 
     fun onHideCompletedClick(hideCompleted: Boolean) = viewModelScope.launch {
-        prefrencesManager.updateHideCompleted(hideCompleted)
+        dataRepository.onHideCompletedClick(hideCompleted)
+    }
+
+    fun onTaskSelected(task: Task) {
+
+    }
+
+    fun onTaskCheckedChanged(task: Task, isChecked: Boolean) = viewModelScope.launch {
+        dataRepository.onTaskCheckedChanged(task, isChecked)
     }
 
 }

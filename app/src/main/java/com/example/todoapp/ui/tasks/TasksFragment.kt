@@ -29,7 +29,18 @@ class TasksFragment: Fragment(R.layout.fragment_tasks) {
         setHasOptionsMenu(true)
         val binding = FragmentTasksBinding.bind(view)
         initRecyclerView(binding)
+        initClickListeners()
         observeData()
+    }
+
+    private fun initClickListeners() {
+        taskAdapter.setOnCheckBoxClickListener { task, isChecked ->
+            viewModel.onTaskCheckedChanged(task, isChecked)
+        }
+
+        taskAdapter.setOnItemClickListener { task ->
+            viewModel.onTaskSelected(task)
+        }
     }
 
     private fun initRecyclerView(binding: FragmentTasksBinding) {
